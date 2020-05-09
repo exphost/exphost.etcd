@@ -1,0 +1,31 @@
+- name: install etcd
+  yum:
+    name: etcd
+    state: installed
+- name: bind utils #TODO move to another role
+  yum:
+    name: bind-utils
+    state: installed
+
+- name: create dirs
+  file:
+    path: "/app/{{app.value.etcd.user.user}}/etcd/{{item}}"
+    state: directory
+  loop:
+    - conf
+    - bin
+
+- name: create dirs2
+  file:
+    path: "/app/{{app.value.etcd.user.user}}/etcd/{{item}}"
+    state: directory
+    owner: "{{app.value.etcd.user.user}}"
+    group: "{{app.value.etcd.user.group}}"
+  loop:
+    - var
+
+- include_tasks: install_standalone-static-dns_loop.yml
+  loop: "{{ansible_play_batch}}"
+  loop_control:
+    loop_var: _loop_host
+  when: inventory_hostname == _loop_host

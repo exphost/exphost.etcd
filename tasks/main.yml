@@ -1,0 +1,9 @@
+- name: debug
+  debug:
+    msg: "jeste ectde"
+
+- include_tasks: consul_discovery.yml
+
+- block:
+  - include_tasks: "install_{{app.value.etcd.install}}-{{app.value.etcd.configs.initial_cluster.type}}.yml"
+  become: True

@@ -1,0 +1,28 @@
+{
+  "services": [
+  {
+    "name": "etcd-{{app.value.etcd.configs.name}}-server",
+    "tags": ["etcd"],
+    "port": {{app.value.etcd.configs.ports.peer}},
+    "checks": [
+    {
+      "tcp": "localhost:{{app.value.etcd.configs.ports.peer}}",
+      "interval": "5s",
+      "timeout": "1s"
+    }
+    ]
+  },
+  {
+    "name": "etcd-{{app.value.etcd.configs.name}}-client",
+    "tags": ["etcd"],
+    "port": {{app.value.etcd.configs.ports.client}},
+    "checks": [
+    {
+      "tcp": "localhost:{{app.value.etcd.configs.ports.client}}",
+      "interval": "5s",
+      "timeout": "1s"
+    }
+    ]
+  }
+  ]
+}

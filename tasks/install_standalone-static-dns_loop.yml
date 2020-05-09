@@ -1,0 +1,69 @@
+- name: copy startup script
+  template:
+    src: startup.py
+    dest: "/app/{{app.value.etcd.user.user}}/etcd/bin"
+    mode: 0755
+  notify:
+    - restart etcd
+
+- name: copy service script
+  template:
+    src: etcd.service
+    dest: "/etc/systemd/system/{{app.value.etcd.user.user}}-etcd-{{app.key}}.service"
+    mode: 0755
+  notify:
+    - restart etcd
+- name: look for existing clusters
+  command: "dig etcd-{{app.value.etcd.configs.name}}-server.service.consul SRV +short"
+  changed_when: False
+  check_mode: False
+  register: _etcd_nodes
+
+- name: resolve nodes names
+  command: "dig {{item.split(' ')[3]}} +short"
+  loop: "{{_etcd_nodes.stdout_lines}}"
+  check_mode: False
+  changed_when: False
+  register: _etcd_nodes_ips
+
+- name: empty nodes list
+  set_fact:
+    _etcd_nodes_list: []
+
+- name: smart prepare nodes list
+  set_fact:
+    _etcd_nodes_list: "{{_etcd_nodes_list + [[item.stdout, item.item.split(' ')[2]|int]]}}"
+  loop: "{{_etcd_nodes_ips.results|list}}"
+
+- name: set _need_bootstrap flag
+  set_fact:
+    _etcd_need_bootstrap: "{{True if _etcd_nodes_list|length == 0 else
+    False if _etcd_nodes_list|length > 1 else
+    True if _etcd_nodes_list[0][0] in ansible_all_ipv4_addresses and _etcd_nodes_list[0][1] == app.value.etcd.configs.ports.peer else
+    False }}"
+
+- name: copy config
+  template:
+    src: etcd.config
+    dest: "/app/{{app.value.etcd.user.user}}/etcd/conf/etcd.config"
+  notify:
+    - restart etcd
+
+- block:
+  - name: look for any client
+    command: "dig etcd-{{app.value.etcd.configs.name}}-client.service.consul SRV +short"
+    changed_when: False
+    check_mode: False
+    register: _etcd_client_nodes
+
+  - name: add member
+    command: "etcdctl --endpoints http://{{_etcd_client_nodes.stdout_lines[0].split(' ')[3]}}:{{_etcd_client_nodes.stdout_lines[0].split(' ')[2]}} member add {{ansible_hostname}}-{{app.key}} http://{{ansible_default_ipv4.address}}:{{app.value.etcd.configs.ports.peer}}"
+  when: not _etcd_nodes_list|json_query('[*][0]')|intersect(ansible_all_ipv4_addresses) and not _etcd_need_bootstrap
+
+- meta: flush_handlers
+
+- name: start service
+  service:
+    name: "{{app.value.etcd.user.user}}-etcd-{{app.key}}.service"
+    state: started
+    enabled: True

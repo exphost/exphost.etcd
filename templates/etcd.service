@@ -1,0 +1,13 @@
+[Unit]
+Description=Etcd service
+After=network.target
+
+[Service]
+Type=notify
+# Another Type: forking
+User={{app.value.etcd.user.user}}
+WorkingDirectory=/app/{{app.value.etcd.user.user}}/etcd
+ExecStart=/app/{{app.value.etcd.user.user}}/etcd/bin/startup.py
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+app_defaults:
+  user:
+    user: "{{app.key}}"
+    group: "{{app.key}}"
+    home: "/app/{{app.key}}"
+    gid: "{{app.value.etcd.user.uid}}"
+  configs:
+    name: "{{app.key}}"
